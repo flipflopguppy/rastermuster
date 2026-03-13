@@ -9,6 +9,8 @@ let gridSizeInput, repeatProbInput;
 const defaultPalette = ['#B2BEB5', '#3B9DDC', '#F35B41', '#F88C12', '#C1D6F5'];
 let lastState = { type: -1, bgIdx: -1, fgIdx: -1 }; 
 
+console.log("SVG-Plugin geladen:", typeof SVG !== 'undefined');
+
 function setup() {
   // SVG-Renderer aktivieren
   createCanvas(800, 800, SVG); 
