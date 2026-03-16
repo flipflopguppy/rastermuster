@@ -12,8 +12,13 @@ let lastState = { type: -1, bgIdx: -1, fgIdx: -1 };
 console.log("SVG-Plugin geladen:", typeof SVG !== 'undefined');
 
 function setup() {
-  // SVG-Renderer aktivieren
-  createCanvas(800, 800, SVG); 
+  // Prüfen, ob das SVG-Plugin da ist. Falls nicht, kurz warten und neu versuchen.
+  if (typeof SVG === 'undefined') {
+    setTimeout(setup, 100); 
+    return;
+  }
+
+  createCanvas(800, 800, SVG);
   
   let labelStyle = "font-family: Helvetica; font-size: 14px; color: black; margin: 0; padding: 0;";
   
