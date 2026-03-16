@@ -10,39 +10,40 @@ let lastState = { type: -1, bgIdx: -1, fgIdx: -1 };
 let isInitialized = false; // Sicherheits-Schalter
 
 function setup() {
-  // 1. Warten bis SVG definiert ist
+  // 1. Prüfen, ob das SVG-Plugin da ist
   if (typeof SVG === 'undefined') {
     setTimeout(setup, 100);
     return;
   }
 
-  createCanvas(800, 800, SVG);
-  
-  // UI Styles
+  // 2. Canvas erstellen
+  let cnv = createCanvas(800, 800, SVG);
+  cnv.parent(document.body); // Erzwingt das Einhängen in die Seite
+
+  // UI Styles & Inputs
   let labelStyle = "font-family: Helvetica; font-size: 14px; color: black; margin: 0; padding: 0;";
-  
-  // 2. Inputs erstellen
-  colorInputs = []; // Sicherstellen, dass das Array leer startet
+  colorInputs = []; 
   for (let i = 0; i < 5; i++) {
     let inp = createInput(defaultPalette[i]);
     inp.position(20, 820 + (i * 30));
     colorInputs.push(inp);
   }
   
-  createP('Rastergröße (z.B. 10):').style(labelStyle).position(250, 810);
   gridSizeInput = createInput('10');
   gridSizeInput.position(250, 835);
   
-  createP('Wdh.-Wahrsch. (0-100%):').style(labelStyle).position(250, 865);
   repeatProbInput = createInput('20');
   repeatProbInput.position(250, 890);
   
+  // Wichtig für SVG: Kurz warten, bevor der erste Draw-Befehl kommt
   noLoop();
   rectMode(CORNER);
   angleMode(DEGREES);
   
-  isInitialized = true; // Jetzt ist alles bereit
-  redraw(); // Einmal zeichnen
+  isInitialized = true;
+  
+  // Kleiner Delay für den allerersten Render-Vorgang
+  setTimeout(() => { redraw(); }, 200);
 }
 
 function draw() {
