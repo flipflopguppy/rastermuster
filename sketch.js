@@ -1,27 +1,28 @@
 /**
  * Generatives Grafik-Raster (SVG-Export)
- * - Drücke 's' zum Speichern als SVG
- * - Klicke in den Canvas zum Neugenerieren
+ * - Robuste Initialisierung für GitHub Pages
  */
 
 let colorInputs = [];
 let gridSizeInput, repeatProbInput;
 const defaultPalette = ['#B2BEB5', '#3B9DDC', '#F35B41', '#F88C12', '#C1D6F5'];
 let lastState = { type: -1, bgIdx: -1, fgIdx: -1 }; 
-
-console.log("SVG-Plugin geladen:", typeof SVG !== 'undefined');
+let isInitialized = false; // Sicherheits-Schalter
 
 function setup() {
-  // Prüfen, ob das SVG-Plugin da ist. Falls nicht, kurz warten und neu versuchen.
+  // 1. Warten bis SVG definiert ist
   if (typeof SVG === 'undefined') {
-    setTimeout(setup, 100); 
+    setTimeout(setup, 100);
     return;
   }
 
   createCanvas(800, 800, SVG);
   
+  // UI Styles
   let labelStyle = "font-family: Helvetica; font-size: 14px; color: black; margin: 0; padding: 0;";
   
+  // 2. Inputs erstellen
+  colorInputs = []; // Sicherstellen, dass das Array leer startet
   for (let i = 0; i < 5; i++) {
     let inp = createInput(defaultPalette[i]);
     inp.position(20, 820 + (i * 30));
@@ -39,10 +40,17 @@ function setup() {
   noLoop();
   rectMode(CORNER);
   angleMode(DEGREES);
+  
+  isInitialized = true; // Jetzt ist alles bereit
+  redraw(); // Einmal zeichnen
 }
 
 function draw() {
+  // Abbrechen, wenn setup() noch nicht fertig ist
+  if (!isInitialized) return;
+
   background(255);
+  
   let palette = colorInputs.map(inp => inp.value() || '#FFFFFF');
   let gSize = parseInt(gridSizeInput.value()) || 10;
   let prob = parseInt(repeatProbInput.value()) || 0;
@@ -116,11 +124,10 @@ function markOccupied(x, y, s, occupied) {
   }
 }
 
-function mousePressed() { if(mouseY < 800) redraw(); }
+function mousePressed() { 
+  if(isInitialized && mouseY < 800) redraw(); 
+}
 
 function keyPressed() {
-  // Wenn 's' gedrückt wird, löse den Download der SVG-Datei aus
-  if (key === 's' || key === 'S') {
-    save('muster.svg'); 
-  }
+  if (isInitialized && (key === 's' || key === 'S')) save("muster.svg");
 }
