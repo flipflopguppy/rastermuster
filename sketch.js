@@ -2,7 +2,8 @@
  * Generatives Grafik-Raster – PNG & SVG Export
  */
 let paletteInput, gridSizeInput, repeatProbInput;
-let svgData = ''; // SVG-String wird parallel zum Canvas aufgebaut
+let svgData = '';
+let colorPreviewDiv;
 
 function setup() {
   let cnv = createCanvas(800, 800);
@@ -15,33 +16,55 @@ function setup() {
   paletteInput = createInput('#B2BEB5,#3B9DDC,#F35B41,#F88C12,#C1D6F5');
   paletteInput.size(400);
   paletteInput.position(20, yStart + 20);
+  paletteInput.input(updateColorPreview); // bei jeder Änderung aktualisieren
 
-  createElement('label', 'Rastergröße:').position(20, yStart + lineH + 25);
+  // Div für Farbvorschau-Quadrate
+  colorPreviewDiv = createDiv('');
+  colorPreviewDiv.position(20, yStart + 48);
+
+  createElement('label', 'Rastergröße:').position(20, yStart + lineH + 70);
   gridSizeInput = createInput('10');
   gridSizeInput.size(60);
-  gridSizeInput.position(20, yStart + lineH + 45);
+  gridSizeInput.position(20, yStart + lineH + 90);
 
-  createElement('label', 'Wiederholung (%):').position(120, yStart + lineH + 25);
+  createElement('label', 'Wiederholung (%):').position(120, yStart + lineH + 70);
   repeatProbInput = createInput('20');
   repeatProbInput.size(60);
-  repeatProbInput.position(120, yStart + lineH + 45);
+  repeatProbInput.position(120, yStart + lineH + 90);
 
   let btn = createButton('Neu generieren');
-  btn.position(20, yStart + lineH * 2 + 60);
+  btn.position(20, yStart + lineH * 2 + 105);
   btn.mousePressed(() => redraw());
 
   let savePng = createButton('PNG speichern');
-  savePng.position(160, yStart + lineH * 2 + 60);
+  savePng.position(160, yStart + lineH * 2 + 105);
   savePng.mousePressed(() => save('muster.png'));
 
   let saveSvg = createButton('SVG speichern');
-  saveSvg.position(290, yStart + lineH * 2 + 60);
+  saveSvg.position(290, yStart + lineH * 2 + 105);
   saveSvg.mousePressed(downloadSVG);
 
   noLoop();
   rectMode(CORNER);
   angleMode(DEGREES);
+  updateColorPreview();
   redraw();
+}
+
+function updateColorPreview() {
+  let palette = getPalette();
+  colorPreviewDiv.html(''); // leeren
+  palette.forEach(col => {
+    let swatch = createDiv('');
+    swatch.parent(colorPreviewDiv);
+    swatch.style('display', 'inline-block');
+    swatch.style('width', '24px');
+    swatch.style('height', '24px');
+    swatch.style('background-color', col);
+    swatch.style('margin-right', '4px');
+    swatch.style('border', '1px solid #aaa');
+    swatch.style('border-radius', '3px');
+  });
 }
 
 function getPalette() {
@@ -59,14 +82,12 @@ function svgEllipse(cx, cy, rx, ry, fill) {
   return `<ellipse cx="${r(cx)}" cy="${r(cy)}" rx="${r(rx)}" ry="${r(ry)}" fill="${fill}"/>`;
 }
 function svgPath(d, fill) {
-  return `<path d="${d}" fill="${fill}"/>`;
+  return `<path d="${d}" fill="${fill}" fill-rule="evenodd"/>`;
 }
-function svgGroup(content, tx, ty, rot) {
-  let transform = `translate(${r(tx)},${r(ty)})`;
-  if (rot) transform += ` rotate(${rot})`;
-  return `<g transform="${transform}">${content}</g>`;
+function svgGroup(content, tx, ty) {
+  return `<g transform="translate(${r(tx)},${r(ty)})">${content}</g>`;
 }
-function r(n) { return Math.round(n * 100) / 100; } // auf 2 Dezimalen runden
+function r(n) { return Math.round(n * 100) / 100; }
 
 function buildSVGShape(posX, posY, size, palette, type, bgIdx, fgIdx, rot) {
   let bg = palette[bgIdx];
@@ -74,7 +95,6 @@ function buildSVGShape(posX, posY, size, palette, type, bgIdx, fgIdx, rot) {
   let s2 = size / 2;
   let inner = '';
 
-  // Hintergrundrechteck
   inner += svgRect(-s2, -s2, size, size, bg);
 
   switch (type) {
@@ -84,18 +104,13 @@ function buildSVGShape(posX, posY, size, palette, type, bgIdx, fgIdx, rot) {
     case 1: // Volles Rechteck
       inner += svgRect(-s2, -s2, size, size, fg);
       break;
-    case 2: { // Halbkreis (CHORD-Arc)
-      let rad = s2;
-      // Arc von 0° bis 180° als Path
-      let x1 = r(rad), y1 = 0;
-      let x2 = r(-rad), y2 = 0;
-      let d = `M ${x1} ${y1} A ${rad} ${rad} 0 0 1 ${x2} ${y2} Z`;
+    case 2: { // Halbkreis
+      let d = `M ${r(s2)} 0 A ${r(s2)} ${r(s2)} 0 0 1 ${r(-s2)} 0 Z`;
       inner += `<g transform="rotate(${rot})">${svgPath(d, fg)}</g>`;
       break;
     }
-    case 3: { // Viertelkreis (PIE)
-      let rad = size;
-      let d = `M ${-s2} ${-s2} L ${r(-s2 + rad)} ${-s2} A ${rad} ${rad} 0 0 1 ${-s2} ${r(-s2 + rad)} Z`;
+    case 3: { // Viertelkreis
+      let d = `M ${r(-s2)} ${r(-s2)} L ${r(s2)} ${r(-s2)} A ${r(size)} ${r(size)} 0 0 1 ${r(-s2)} ${r(s2)} Z`;
       inner += `<g transform="rotate(${rot})">${svgPath(d, fg)}</g>`;
       break;
     }
@@ -104,8 +119,17 @@ function buildSVGShape(posX, posY, size, palette, type, bgIdx, fgIdx, rot) {
       inner += `<g transform="rotate(${rot})"><polygon points="${pts}" fill="${fg}"/></g>`;
       break;
     }
+    case 5: { // Ring
+      let outerR = s2;
+      let innerR = s2 / 2;
+      // Zwei Kreise mit fill-rule evenodd erzeugen das Loch
+      let d = `M ${r(outerR)} 0 A ${r(outerR)} ${r(outerR)} 0 1 0 ${r(-outerR)} 0 A ${r(outerR)} ${r(outerR)} 0 1 0 ${r(outerR)} 0 Z `
+            + `M ${r(innerR)} 0 A ${r(innerR)} ${r(innerR)} 0 1 0 ${r(-innerR)} 0 A ${r(innerR)} ${r(innerR)} 0 1 0 ${r(innerR)} 0 Z`;
+      inner += svgPath(d, fg);
+      break;
+    }
   }
-  return svgGroup(inner, posX + s2, posY + s2, 0);
+  return svgGroup(inner, posX + s2, posY + s2);
 }
 
 function draw() {
@@ -126,7 +150,6 @@ function draw() {
   let occupied = Array(gSize).fill().map(() => Array(gSize).fill(false));
   let lastState = { type: -1, bgIdx: -1, fgIdx: -1 };
 
-  // SVG-Elemente sammeln
   let svgElements = [`<rect width="800" height="800" fill="white"/>`];
 
   for (let y = 0; y < gSize; y++) {
@@ -144,7 +167,7 @@ function draw() {
         bgI = lastState.bgIdx;
         fgI = lastState.fgIdx;
       } else {
-        t   = floor(random(5));
+        t   = floor(random(6)); // 0–5 statt 0–4
         bgI = floor(random(palette.length));
         let available = [];
         for (let i = 0; i < palette.length; i++) if (i !== bgI) available.push(i);
@@ -152,12 +175,9 @@ function draw() {
       }
       lastState = { type: t, bgIdx: bgI, fgIdx: fgI };
 
-      let rot = floor(random(4)) * 90; // einmal würfeln, für Canvas & SVG gleich
+      let rot = floor(random(4)) * 90;
 
-      // Canvas zeichnen
       drawShapeCanvas(x * cellSize, y * cellSize, cellSize * sF, palette, t, bgI, fgI, rot);
-
-      // SVG parallel aufbauen
       svgElements.push(buildSVGShape(x * cellSize, y * cellSize, cellSize * sF, palette, t, bgI, fgI, rot));
     }
   }
@@ -180,6 +200,21 @@ function drawShapeCanvas(posX, posY, size, palette, type, bgIdx, fgIdx, rot) {
     case 2: rotate(rot); arc(0, 0, size, size, 0, 180, CHORD); break;
     case 3: rotate(rot); arc(-size / 2, -size / 2, size * 2, size * 2, 0, 90, PIE); break;
     case 4: rotate(rot); triangle(-size / 2, -size / 2, size / 2, -size / 2, -size / 2, size / 2); break;
+    case 5: { // Ring mit beginContour / endContour
+      let outerR = size / 2;
+      let innerR = size / 4;
+      beginShape();
+      for (let a = 0; a < 360; a += 5) {
+        vertex(cos(a) * outerR, sin(a) * outerR);
+      }
+      beginContour();
+      for (let a = 360; a >= 0; a -= 5) {
+        vertex(cos(a) * innerR, sin(a) * innerR);
+      }
+      endContour();
+      endShape(CLOSE);
+      break;
+    }
   }
   pop();
 }
