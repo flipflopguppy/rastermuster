@@ -1,36 +1,41 @@
 /**
- * Generatives Grafik-Raster – ohne p5.svg
+ * Generatives Grafik-Raster
  */
-let colorInputs = [];
+let paletteInput;
 let gridSizeInput, repeatProbInput;
-const defaultPalette = ['#B2BEB5', '#3B9DDC', '#F35B41', '#F88C12', '#C1D6F5'];
-let lastState = { type: -1, bgIdx: -1, fgIdx: -1 };
 
 function setup() {
   let cnv = createCanvas(800, 800);
   cnv.parent(document.body);
 
-  colorInputs = [];
-  for (let i = 0; i < 5; i++) {
-    let inp = createInput(defaultPalette[i]);
-    inp.position(20, 820 + i * 30);
-    colorInputs.push(inp);
-  }
+  let yStart = 860; // mehr Abstand zum Muster
+  let lineH = 35;
 
+  // Farben als kommagetrennte Liste
+  createElement('label', 'Farben (kommagetrennt):').position(20, yStart);
+  paletteInput = createInput('#B2BEB5,#3B9DDC,#F35B41,#F88C12,#C1D6F5');
+  paletteInput.size(400);
+  paletteInput.position(20, yStart + 20);
+
+  // Nur ein Eingabefeld für die Rastergröße
+  createElement('label', 'Rastergröße:').position(20, yStart + lineH + 25);
   gridSizeInput = createInput('10');
-  gridSizeInput.position(250, 820);
+  gridSizeInput.size(60);
+  gridSizeInput.position(20, yStart + lineH + 45);
 
+  // Wiederholungswahrscheinlichkeit
+  createElement('label', 'Wiederholung (%):').position(120, yStart + lineH + 25);
   repeatProbInput = createInput('20');
-  repeatProbInput.position(250, 855);
+  repeatProbInput.size(60);
+  repeatProbInput.position(120, yStart + lineH + 45);
 
-  // Neu-generieren Button
+  // Buttons
   let btn = createButton('Neu generieren');
-  btn.position(20, 980);
+  btn.position(20, yStart + lineH * 2 + 60);
   btn.mousePressed(() => redraw());
 
-  // PNG-Export Button
   let saveBtn = createButton('PNG speichern');
-  saveBtn.position(140, 980);
+  saveBtn.position(140, yStart + lineH * 2 + 60);
   saveBtn.mousePressed(() => save('muster.png'));
 
   noLoop();
@@ -39,16 +44,29 @@ function setup() {
   redraw();
 }
 
+function getPalette() {
+  return paletteInput.value()
+    .split(',')
+    .map(c => c.trim())
+    .filter(c => c.length > 0);
+}
+
 function draw() {
   background(255);
 
-  let palette = colorInputs.map(inp => inp.value() || '#FFFFFF');
+  let palette = getPalette();
+  if (palette.length < 2) {
+    fill(0); noStroke();
+    textSize(16);
+    text('Bitte mindestens 2 Farben eingeben.', 20, 40);
+    return;
+  }
+
   let gSize = parseInt(gridSizeInput.value()) || 10;
-  let prob = parseInt(repeatProbInput.value()) || 0;
+  let prob  = parseInt(repeatProbInput.value()) || 0;
   let cellSize = width / gSize;
   let occupied = Array(gSize).fill().map(() => Array(gSize).fill(false));
-
-  lastState = { type: -1, bgIdx: -1, fgIdx: -1 };
+  let lastState = { type: -1, bgIdx: -1, fgIdx: -1 };
 
   for (let y = 0; y < gSize; y++) {
     for (let x = 0; x < gSize; x++) {
@@ -61,15 +79,15 @@ function draw() {
 
       let t, bgI, fgI;
       if (lastState.type !== -1 && random(100) < prob) {
-        t = lastState.type;
+        t   = lastState.type;
         bgI = lastState.bgIdx;
         fgI = lastState.fgIdx;
       } else {
-        t = floor(random(5));
+        t   = floor(random(5));
         bgI = floor(random(palette.length));
         let available = [];
         for (let i = 0; i < palette.length; i++) if (i !== bgI) available.push(i);
-        fgI = available[floor(random(available.length))]; // BUG FIX
+        fgI = available[floor(random(available.length))];
       }
       lastState = { type: t, bgIdx: bgI, fgIdx: fgI };
 
@@ -90,25 +108,11 @@ function drawShape(posX, posY, size, palette, type, bgIdx, fgIdx) {
   let rot = floor(random(4)) * 90;
 
   switch (type) {
-    case 0:
-      ellipse(0, 0, size);
-      break;
-    case 1:
-      // Volles Rechteck = nur Hintergrundfarbe sichtbar, fgI als Vollrechteck drüber
-      rect(-size / 2, -size / 2, size, size);
-      break;
-    case 2:
-      rotate(rot);
-      arc(0, 0, size, size, 0, 180, CHORD);
-      break;
-    case 3:
-      rotate(rot);
-      arc(-size / 2, -size / 2, size * 2, size * 2, 0, 90, PIE);
-      break;
-    case 4:
-      rotate(rot);
-      triangle(-size / 2, -size / 2, size / 2, -size / 2, -size / 2, size / 2);
-      break;
+    case 0: ellipse(0, 0, size); break;
+    case 1: rect(-size / 2, -size / 2, size, size); break;
+    case 2: rotate(rot); arc(0, 0, size, size, 0, 180, CHORD); break;
+    case 3: rotate(rot); arc(-size / 2, -size / 2, size * 2, size * 2, 0, 90, PIE); break;
+    case 4: rotate(rot); triangle(-size / 2, -size / 2, size / 2, -size / 2, -size / 2, size / 2); break;
   }
   pop();
 }
